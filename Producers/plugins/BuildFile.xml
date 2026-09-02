@@ -1,0 +1,13 @@
+<use   name="FWCore/Framework"/>
+<use   name="FWCore/ParameterSet"/>
+<use   name="FWCore/Utilities"/>
+<use   name="DataFormats/Common"/>
+<use   name="DataFormats/EgammaCandidates"/>
+<use   name="DataFormats/PatCandidates"/>
+<use   name="rootcore"/>
+<use   name="rootrflx"/>
+<use   name="roofit"/>
+<use   name="roofitcore"/>
+<use   name="boost_python"/>
+<flags EDM_PLUGIN="1"/>
+<!-- Flags CXXFLAGS="-ggdb"/ -->
