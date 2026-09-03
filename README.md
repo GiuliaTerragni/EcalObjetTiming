@@ -6,10 +6,12 @@
     * cd CMSSW_15_0_18/src/
     * cmsenv
     * git cms-init
-    * git clone git clone git@github.com:bmarzocc/EcalObjetTiming.git
-    * scram b -j 20
+    * git cms-checkout-topic -u GiuliaTerragni:15_0_18_EgammaTimeInfo
+    * git clone git@github.com:bmarzocc/EcalObjetTiming.git
+    * scram b -j 5
 
 2) Run: 
 
-    * cd CMSSW_15_0_18/src/EcalObjetTiming/Producers/test/
+    * voms-proxy-init --rfc --voms cms -valid 192:00 #Setup grid certificate
+    * cd EcalObjetTiming/Producers/test/
     * cmsRun EcalObjetTiming_cfg.py
