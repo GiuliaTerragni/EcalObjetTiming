@@ -59,9 +59,13 @@ process.MINIAODoutput.outputCommands.extend([
 
 process.slimmedPhotons = cms.EDProducer("EcalTimingPatPhotonProducer",
     src = cms.InputTag("slimmedPhotons","","RECO" ),
+    ebRecHits = cms.InputTag("reducedEgamma","reducedEBRecHits","RECO"),
+    eeRecHits = cms.InputTag("reducedEgamma","reducedEERecHits","RECO"),
 )
 process.slimmedElectrons = cms.EDProducer("EcalTimingPatElectronProducer",
     src = cms.InputTag("slimmedElectrons","","RECO" ),
+    ebRecHits = cms.InputTag("reducedEgamma","reducedEBRecHits","RECO"),
+    eeRecHits = cms.InputTag("reducedEgamma","reducedEERecHits","RECO"),
 )
 process.producer_step = cms.Path(process.slimmedPhotons*process.slimmedElectrons)
 process.endjob_step = cms.EndPath(process.endOfProcess)
