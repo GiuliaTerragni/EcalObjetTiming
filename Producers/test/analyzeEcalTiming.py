@@ -84,16 +84,20 @@ out = ROOT.TFile(outputFile, "RECREATE")
 for h in hists.values():
     h.Write()
 
-# overlay canvas comparing all 4 methods, per object and per variable
+# overlay canvas comparing methods, per object and per variable.
+# Fixed is excluded here: its spike is much taller than the real
+# distributions and squashes them on the shared y-axis.
+plotMethods = [m for m in methods if m != "Fixed"]
+
 canvases = []
 for obj in objects:
     for var in variables:
         canvas = ROOT.TCanvas(f"c_{obj}_{var}_methods", f"{obj}: {var} method comparison", 800, 600)
         legend = ROOT.TLegend(0.6, 0.65, 0.88, 0.88)
 
-        maxY = max(hists[(obj, var, m)].GetMaximum() for m in methods) * 1.1
+        maxY = max(hists[(obj, var, m)].GetMaximum() for m in plotMethods) * 1.1
 
-        for i, method in enumerate(methods):
+        for i, method in enumerate(plotMethods):
             h = hists[(obj, var, method)]
             _, sigma = resolutions[(obj, var, method)]
             h.SetLineColor(methodColors[method])
