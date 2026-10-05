@@ -4,6 +4,8 @@
 <use   name="DataFormats/Common"/>
 <use   name="DataFormats/EgammaCandidates"/>
 <use   name="DataFormats/PatCandidates"/>
+<use   name="DataFormats/EcalRecHit"/>
+<use   name="EcalObjetTiming/Producers"/>
 <use   name="rootcore"/>
 <use   name="rootrflx"/>
 <use   name="roofit"/>

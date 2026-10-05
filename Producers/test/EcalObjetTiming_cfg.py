@@ -11,7 +11,7 @@ options.register('outputFile',
 options.parseArguments()
 print(options)
 
-process = cms.Process("TEST")
+process = cms.Process("NEWTIME")
 
 # import of standard configurations
 process.load('Configuration.StandardSequences.Services_cff')
@@ -27,7 +27,7 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag,'140X_dataRun3_v20','')
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32( -1 ) )
-process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32( 1 )
+process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32( 1000 )
                                                                        
 process.source = cms.Source("PoolSource",
     #skipEvents = cms.untracked.uint32(19),                       
@@ -59,9 +59,13 @@ process.MINIAODoutput.outputCommands.extend([
 
 process.slimmedPhotons = cms.EDProducer("EcalTimingPatPhotonProducer",
     src = cms.InputTag("slimmedPhotons","","RECO" ),
+    ebRecHits = cms.InputTag("reducedEgamma","reducedEBRecHits","RECO"),
+    eeRecHits = cms.InputTag("reducedEgamma","reducedEERecHits","RECO"),
 )
 process.slimmedElectrons = cms.EDProducer("EcalTimingPatElectronProducer",
     src = cms.InputTag("slimmedElectrons","","RECO" ),
+    ebRecHits = cms.InputTag("reducedEgamma","reducedEBRecHits","RECO"),
+    eeRecHits = cms.InputTag("reducedEgamma","reducedEERecHits","RECO"),
 )
 process.producer_step = cms.Path(process.slimmedPhotons*process.slimmedElectrons)
 process.endjob_step = cms.EndPath(process.endOfProcess)
