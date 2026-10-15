@@ -8,8 +8,17 @@
 #include "DataFormats/PatCandidates/interface/Photon.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
+#include "CondFormats/DataRecord/interface/EcalPedestalsRcd.h"
+#include "CondFormats/EcalObjects/interface/EcalPedestals.h"
+#include "CondFormats/DataRecord/interface/EcalIntercalibConstantsRcd.h"
+#include "CondFormats/EcalObjects/interface/EcalIntercalibConstants.h"
+#include "CondFormats/DataRecord/interface/EcalADCToGeVConstantRcd.h"
+#include "CondFormats/EcalObjects/interface/EcalADCToGeVConstant.h"
+#include "CalibCalorimetry/EcalLaserCorrection/interface/EcalLaserDbRecord.h"
+#include "CalibCalorimetry/EcalLaserCorrection/interface/EcalLaserDbService.h"
 
 #include "EcalObjetTiming/Producers/interface/EcalTimeTools.h"
+//#include "RecoEgamma/EgammaTools/interface/EcalTimeTools.h"
 
 #include <memory>
 #include <vector>
@@ -27,16 +36,21 @@ private:
   edm::EDGetTokenT<Collection> token_;
   edm::EDGetTokenT<EcalRecHitCollection> ebRecHitsToken_;
   edm::EDGetTokenT<EcalRecHitCollection> eeRecHitsToken_;
+  edm::ESGetToken<EcalPedestals, EcalPedestalsRcd> pedToken_;
+  edm::ESGetToken<EcalIntercalibConstants, EcalIntercalibConstantsRcd> icalToken_;
+  edm::ESGetToken<EcalADCToGeVConstant, EcalADCToGeVConstantRcd> agcToken_;
+  edm::ESGetToken<EcalLaserDbService, EcalLaserDbRecord> laserToken_;
 };
 
 template <typename T>
 EcalTimingProducer<T>::EcalTimingProducer(const edm::ParameterSet& cfg)
-    : token_(consumes<Collection>(
-      cfg.getParameter<edm::InputTag>("src"))),
-      ebRecHitsToken_(consumes<EcalRecHitCollection>(
-      cfg.getParameter<edm::InputTag>("ebRecHits"))),
-      eeRecHitsToken_(consumes<EcalRecHitCollection>(
-      cfg.getParameter<edm::InputTag>("eeRecHits")))
+    : token_(consumes<Collection>(cfg.getParameter<edm::InputTag>("src"))),
+      ebRecHitsToken_(consumes<EcalRecHitCollection>(cfg.getParameter<edm::InputTag>("ebRecHits"))),
+      eeRecHitsToken_(consumes<EcalRecHitCollection>(cfg.getParameter<edm::InputTag>("eeRecHits"))),
+      pedToken_(esConsumes<EcalPedestals, EcalPedestalsRcd>()),
+      icalToken_(esConsumes<EcalIntercalibConstants, EcalIntercalibConstantsRcd>()),
+      agcToken_(esConsumes<EcalADCToGeVConstant, EcalADCToGeVConstantRcd>()),
+      laserToken_(esConsumes<EcalLaserDbService, EcalLaserDbRecord>())
 {
   produces<Collection>("modifiedTimeSeed");
   produces<Collection>("modifiedTimeNotWeighted");
@@ -47,7 +61,7 @@ EcalTimingProducer<T>::EcalTimingProducer(const edm::ParameterSet& cfg)
 }
 
 template <typename T>
-void EcalTimingProducer<T>::produce(edm::StreamID, edm::Event& evt, edm::EventSetup const&) const
+void EcalTimingProducer<T>::produce(edm::StreamID, edm::Event& evt, edm::EventSetup const& es) const
 {
   edm::Handle<Collection> handle;
   evt.getByToken(token_, handle);
@@ -58,36 +72,40 @@ void EcalTimingProducer<T>::produce(edm::StreamID, edm::Event& evt, edm::EventSe
   edm::Handle<EcalRecHitCollection> eeRecHits;
   evt.getByToken(eeRecHitsToken_, eeRecHits);
 
+  const EcalPedestals& ped = es.getData(pedToken_);
+  const EcalIntercalibConstants& ical = es.getData(icalToken_);
+  const EcalADCToGeVConstant& agc = es.getData(agcToken_);
+  const EcalLaserDbService& laser = es.getData(laserToken_);
 
   // Seed crystal
   auto seedOutput = std::make_unique<Collection>(*handle);
-  setEcalTime(*seedOutput, *ebRecHits, *eeRecHits, "TimeSeed");
+  setEcalSeedTime(*seedOutput, *ebRecHits, *eeRecHits);
   evt.put(std::move(seedOutput), "modifiedTimeSeed");
   
   // Not weighted
   auto notWeightedOutput = std::make_unique<Collection>(*handle);
-  setEcalTime(*notWeightedOutput, *ebRecHits, *eeRecHits, "Time");
+  setEcalWeightedTime(*notWeightedOutput, *ebRecHits, *eeRecHits, ped, ical, agc, laser, evt.time(), false, 0.);
   evt.put(std::move(notWeightedOutput), "modifiedTimeNotWeighted");
-
+  
   // Energy weighted
   auto energyWeightedOutput = std::make_unique<Collection>(*handle);
-  setEcalTime(*energyWeightedOutput, *ebRecHits, *eeRecHits, "TimeEnergy");
+  setEcalWeightedTime(*energyWeightedOutput, *ebRecHits, *eeRecHits, ped, ical, agc, laser, evt.time(), true, 0.5);
   evt.put(std::move(energyWeightedOutput), "modifiedTimeEnergyWeighted");
   
   // Sqrt energy weighted
-  auto SqrtEnergyWeightedOutput = std::make_unique<Collection>(*handle);
-  setEcalTime(*SqrtEnergyWeightedOutput, *ebRecHits, *eeRecHits, "TimeSqrtEnergy");
-  evt.put(std::move(SqrtEnergyWeightedOutput), "modifiedTimeSqrtEnergyWeighted");
-
+  auto sqrtEnergyWeightedOutput = std::make_unique<Collection>(*handle);
+  setEcalWeightedTime(*sqrtEnergyWeightedOutput, *ebRecHits, *eeRecHits, ped, ical, agc, laser, evt.time(), true, 0.025);
+  evt.put(std::move(sqrtEnergyWeightedOutput), "modifiedTimeSqrtEnergyWeighted");
+  
   // Energy square weighted
-  auto SqrEnergyWeightedOutput = std::make_unique<Collection>(*handle);
-  setEcalTime(*SqrEnergyWeightedOutput, *ebRecHits, *eeRecHits, "TimeSqrEnergy");
-  evt.put(std::move(SqrEnergyWeightedOutput), "modifiedTimeSqrEnergyWeighted");
-   
+  auto sqrEnergyWeightedOutput = std::make_unique<Collection>(*handle);
+  setEcalWeightedTime(*sqrEnergyWeightedOutput, *ebRecHits, *eeRecHits, ped, ical, agc, laser, evt.time(), true, 1.);
+  evt.put(std::move(sqrEnergyWeightedOutput), "modifiedTimeSqrEnergyWeighted");
+
   // Energy resolution energy weighted
-  auto ResEnergyWeightedOutput = std::make_unique<Collection>(*handle);
-  setEcalTime(*ResEnergyWeightedOutput, *ebRecHits, *eeRecHits, "TimeResEnergy");
-  evt.put(std::move(ResEnergyWeightedOutput), "modifiedTimeResEnergyWeighted");
+  auto resEnergyWeightedOutput = std::make_unique<Collection>(*handle);
+  setEcalWeightedTime(*resEnergyWeightedOutput, *ebRecHits, *eeRecHits, ped, ical, agc, laser, evt.time(), true, 1., {15.14,27.31} , { 0.98, 0.00}, { 0.19, 0.10}, {18.75,26.90}, { 3.65, 6.48}, { 0.13, 0.13});
+  evt.put(std::move(resEnergyWeightedOutput), "modifiedTimeResEnergyWeighted");
 }
 
 using EcalTimingPhotonProducer = EcalTimingProducer<reco::Photon>;
