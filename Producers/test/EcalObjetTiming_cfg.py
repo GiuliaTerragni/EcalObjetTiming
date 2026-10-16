@@ -3,11 +3,16 @@ import FWCore.Utilities.FileUtils as FileUtils
 import FWCore.ParameterSet.VarParsing as VarParsing
 
 options = VarParsing.VarParsing('standard')
-options.register('outputFile', 
-                  'step4_miniaod_newTime.root', 
+options.register('outputFile',
+                  'step4_miniaod_newTime.root',
                   VarParsing.VarParsing.multiplicity.singleton,
                   VarParsing.VarParsing.varType.string,
                   "Output file")
+options.register('ntupleFile',
+                  'ecalTiming_ntuple.root',
+                  VarParsing.VarParsing.multiplicity.singleton,
+                  VarParsing.VarParsing.varType.string,
+                  "Flat ntuple output file (electronTree/photonTree)")
 options.parseArguments()
 print(options)
 
@@ -29,10 +34,11 @@ process.GlobalTag = GlobalTag(process.GlobalTag,'140X_dataRun3_v20','')
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32( -1 ) )
 process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32( 1000 )
                                                                        
+defaultInputFile = 'root://cms-xrd-global.cern.ch//store/data/Run2025F/EGamma2/MINIAOD/PromptReco-v1/000/397/596/00000/b5f6919e-147b-416b-b6fa-755cdc9512e2.root'
+
 process.source = cms.Source("PoolSource",
-    #skipEvents = cms.untracked.uint32(19),                       
-    #fileNames = cms.untracked.vstring(options.inputFile),
-    fileNames = cms.untracked.vstring('root://cms-xrd-global.cern.ch//store/data/Run2025F/EGamma2/MINIAOD/PromptReco-v1/000/397/596/00000/b5f6919e-147b-416b-b6fa-755cdc9512e2.root'),
+    #skipEvents = cms.untracked.uint32(19),
+    fileNames = cms.untracked.vstring(options.files if options.files else [defaultInputFile]),
     secondaryFileNames = cms.untracked.vstring()
 )
 
@@ -67,8 +73,22 @@ process.slimmedElectrons = cms.EDProducer("EcalTimingPatElectronProducer",
     ebRecHits = cms.InputTag("reducedEgamma","reducedEBRecHits","RECO"),
     eeRecHits = cms.InputTag("reducedEgamma","reducedEERecHits","RECO"),
 )
+process.TFileService = cms.Service("TFileService",
+    fileName = cms.string(options.ntupleFile)
+)
+
+process.electronTree = cms.EDAnalyzer("EcalTimingPatElectronTreeDumper",
+    src = cms.InputTag("slimmedElectrons","","NEWTIME"),
+    treeName = cms.string("electronTree"),
+)
+process.photonTree = cms.EDAnalyzer("EcalTimingPatPhotonTreeDumper",
+    src = cms.InputTag("slimmedPhotons","","NEWTIME"),
+    treeName = cms.string("photonTree"),
+)
+
 process.producer_step = cms.Path(process.slimmedPhotons*process.slimmedElectrons)
+process.ntuple_step = cms.EndPath(process.electronTree+process.photonTree)
 process.endjob_step = cms.EndPath(process.endOfProcess)
 process.MiniAODoutput_step = cms.EndPath(process.MINIAODoutput)
-process.schedule = cms.Schedule(process.producer_step,process.endjob_step,process.MiniAODoutput_step)
+process.schedule = cms.Schedule(process.producer_step,process.ntuple_step,process.endjob_step,process.MiniAODoutput_step)
 
