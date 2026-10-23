@@ -23,9 +23,9 @@
 #include <stdexcept>
 
 struct Identifications {
-  bool cutBasedloose = false;
-  bool cutBasedmedium = false;
-  bool cutBasedtight = false;
+  bool cutBasedLoose = false;
+  bool cutBasedMedium = false;
+  bool cutBasedTight = false;
   float mvaScore = -1.;
 };
 
@@ -68,6 +68,11 @@ private:
   TTree* tree_;
   std::string mvaID_;
   std::string cutBasedID_;
+  float ptMin_;
+  float mvaIDScoreMin_;
+  bool selectCutBasedLooseID_;
+  bool selectCutBasedMediumID_;
+  bool selectCutBasedTightID_;
 
   // Event-level quantities: scalar branches.
   unsigned int run_ = 0;
@@ -150,6 +155,11 @@ EcalTimingTreeDumper<T>::EcalTimingTreeDumper(const edm::ParameterSet& cfg)
   
   mvaID_ = cfg.getParameter<std::string>("mvaID");
   cutBasedID_ = cfg.getParameter<std::string>("cutBasedID");
+  ptMin_ = cfg.getParameter<double>("ptMin");
+  mvaIDScoreMin_ = cfg.getParameter<double>("mvaIDScoreMin");
+  selectCutBasedLooseID_ = cfg.getParameter<bool>("selectCutBasedLooseID");
+  selectCutBasedMediumID_ = cfg.getParameter<bool>("selectCutBasedMediumID");
+  selectCutBasedTightID_ = cfg.getParameter<bool>("selectCutBasedTightID");
 
   // Event-level branches.
   tree_->Branch("run", &run_, "run/i");
@@ -201,6 +211,7 @@ void EcalTimingTreeDumper<T>::analyze(const edm::Event& evt,
                                       const edm::EventSetup& es) {
 
   // Clear all object-level vectors at the beginning of each event
+  nObjects_ = 0;
   eta_.clear();
   phi_.clear();
   pt_.clear();
@@ -288,10 +299,18 @@ void EcalTimingTreeDumper<T>::analyze(const edm::Event& evt,
   rho_ = *(rho.product());
 
   // Loop over objects and append their values to the vectors.
-  nObjects_ = nObjects;
   for (size_t j = 0; j < nObjects; ++j) {
 
        const T& obj = handles[0]->at(j);
+       
+       // apply selections
+       identifications_ = getIdentifications(obj, mvaID_, cutBasedID_);
+       if(obj.pt() < ptMin_) continue;
+       if(identifications_.mvaScore < mvaIDScoreMin_) continue;
+       if(selectCutBasedLooseID_ && identifications_.cutBasedLoose < 0.5) continue;
+       if(selectCutBasedMediumID_ && identifications_.cutBasedMedium < 0.5) continue;
+       if(selectCutBasedTightID_ && identifications_.cutBasedTight < 0.5) continue;
+       
        auto ecalIds = getEcalIds(obj);
          
        // Kinematics.
@@ -317,10 +336,9 @@ void EcalTimingTreeDumper<T>::analyze(const edm::Event& evt,
        nEcalSeedClusterHits_.push_back(static_cast<int>(obj.superCluster()->seed()->hitsAndFractions().size()));
        nEcalClusters_.push_back(static_cast<int>(obj.superCluster()->clusters().size()));
        
-       identifications_ = getIdentifications(obj, mvaID_, cutBasedID_);
-       passCutBasedLooseID_.push_back(identifications_.cutBasedloose);
-       passCutBasedMediumID_.push_back(identifications_.cutBasedmedium);
-       passCutBasedTightID_.push_back(identifications_.cutBasedtight);
+       passCutBasedLooseID_.push_back(identifications_.cutBasedLoose);
+       passCutBasedMediumID_.push_back(identifications_.cutBasedMedium);
+       passCutBasedTightID_.push_back(identifications_.cutBasedTight);
        mvaIDScore_.push_back(identifications_.mvaScore);
        if constexpr (std::is_same_v<T, pat::Electron>) {
             isEcalDrivenSeed_.push_back(obj.ecalDrivenSeed());  
@@ -381,9 +399,11 @@ void EcalTimingTreeDumper<T>::analyze(const edm::Event& evt,
        seedClusterTimeNoOOTCorr_[5].push_back(timeResults_.timeNoOOTCorr);
        seedClusterTimeNoOOTCorrError_[5].push_back(timeResults_.timeNoOOTCorrError);
        
+       nObjects_++; 
+       
   }
   // Fill the tree exactly once per event.
-  // This also stores events with zero objects as empty vectors.
+  if(nObjects_ < 1) return;
   tree_->Fill();
 }
 
@@ -392,14 +412,14 @@ Identifications EcalTimingTreeDumper<T>::getIdentifications(const T& obj, const 
   Identifications results;
   if constexpr (std::is_same_v<T, pat::Electron>) {
       results.mvaScore       = obj.userFloat(mvaID.c_str()); 
-      results.cutBasedloose  = (obj.isElectronIDAvailable((cutBasedID+"-loose").c_str())  && obj.electronID((cutBasedID+"-loose").c_str()) > 0.5);
-      results.cutBasedmedium = (obj.isElectronIDAvailable((cutBasedID+"-medium").c_str())  && obj.electronID((cutBasedID+"-medium").c_str()) > 0.5);
-      results.cutBasedtight  = (obj.isElectronIDAvailable((cutBasedID+"-tight").c_str())  && obj.electronID((cutBasedID+"-tight").c_str()) > 0.5);
+      results.cutBasedLoose  = (obj.isElectronIDAvailable((cutBasedID+"-loose").c_str())  && obj.electronID((cutBasedID+"-loose").c_str()) > 0.5);
+      results.cutBasedMedium = (obj.isElectronIDAvailable((cutBasedID+"-medium").c_str())  && obj.electronID((cutBasedID+"-medium").c_str()) > 0.5);
+      results.cutBasedTight  = (obj.isElectronIDAvailable((cutBasedID+"-tight").c_str())  && obj.electronID((cutBasedID+"-tight").c_str()) > 0.5);
   } else if constexpr (std::is_same_v<T, pat::Photon>){
       results.mvaScore       = obj.userFloat(mvaID.c_str());
-      results.cutBasedloose  = (obj.isPhotonIDAvailable((cutBasedID+"-loose").c_str())  && obj.photonID((cutBasedID+"-loose").c_str()) > 0.5);
-      results.cutBasedmedium = (obj.isPhotonIDAvailable((cutBasedID+"-medium").c_str())  && obj.photonID((cutBasedID+"-medium").c_str()) > 0.5);
-      results.cutBasedtight  = (obj.isPhotonIDAvailable((cutBasedID+"-tight").c_str())  && obj.photonID((cutBasedID+"-tight").c_str()) > 0.5);
+      results.cutBasedLoose  = (obj.isPhotonIDAvailable((cutBasedID+"-loose").c_str())  && obj.photonID((cutBasedID+"-loose").c_str()) > 0.5);
+      results.cutBasedMedium = (obj.isPhotonIDAvailable((cutBasedID+"-medium").c_str())  && obj.photonID((cutBasedID+"-medium").c_str()) > 0.5);
+      results.cutBasedTight  = (obj.isPhotonIDAvailable((cutBasedID+"-tight").c_str())  && obj.photonID((cutBasedID+"-tight").c_str()) > 0.5);
   }
   return results;
 }

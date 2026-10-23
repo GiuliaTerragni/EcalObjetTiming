@@ -58,6 +58,7 @@ process.TFileService = cms.Service("TFileService",
 )
 
 process.electronTree = cms.EDAnalyzer("EcalTimingPatElectronTreeDumper",
+    treeName = cms.string("electronTree"),
     src = cms.InputTag("slimmedElectrons","","NEWTIME"),
     vertices = cms.InputTag("offlineSlimmedPrimaryVertices",""), 
     rhos = cms.InputTag("fixedGridRhoAll",""),
@@ -65,9 +66,14 @@ process.electronTree = cms.EDAnalyzer("EcalTimingPatElectronTreeDumper",
     eeRecHits = cms.InputTag("reducedEgamma","reducedEERecHits"),
     mvaID = cms.string("ElectronMVAEstimatorRun2RunIIIWinter22IsoV1Values"),
     cutBasedID = cms.string("cutBasedElectronID-RunIIIWinter22-V1"),
-    treeName = cms.string("electronTree"),
+    ptMin = cms.double(5.),
+    mvaIDScoreMin = cms.double(-1.),
+    selectCutBasedLooseID = cms.bool(True),
+    selectCutBasedMediumID = cms.bool(False),
+    selectCutBasedTightID = cms.bool(False)
 )
 process.photonTree = cms.EDAnalyzer("EcalTimingPatPhotonTreeDumper",
+    treeName = cms.string("photonTree"),
     src = cms.InputTag("slimmedPhotons","","NEWTIME"),
     vertices = cms.InputTag("offlineSlimmedPrimaryVertices",""), 
     rhos = cms.InputTag("fixedGridRhoAll",""),
@@ -75,7 +81,11 @@ process.photonTree = cms.EDAnalyzer("EcalTimingPatPhotonTreeDumper",
     eeRecHits = cms.InputTag("reducedEgamma","reducedEERecHits"),
     mvaID = cms.string("PhotonMVAEstimatorRunIIIWinter22v1Values"),
     cutBasedID = cms.string("cutBasedPhotonID-RunIIIWinter22-122X-V1"),
-    treeName = cms.string("photonTree"),
+    ptMin = cms.double(5.),
+    mvaIDScoreMin = cms.double(-1.),
+    selectCutBasedLooseID = cms.bool(True),
+    selectCutBasedMediumID = cms.bool(False),
+    selectCutBasedTightID = cms.bool(False)
 )
 
 process.producer_step = cms.Path(process.slimmedPhotons*process.slimmedElectrons)
