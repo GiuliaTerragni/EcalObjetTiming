@@ -8,8 +8,6 @@
 <use   name="DataFormats/EgammaCandidates"/>
 <use   name="DataFormats/PatCandidates"/>
 <use   name="DataFormats/EcalRecHit"/>
-<use   name="FWCore/ServiceRegistry"/>
-<use   name="CommonTools/UtilAlgos"/>
 <use   name="CondFormats/DataRecord"/>
 <use   name="CalibCalorimetry/EcalLaserCorrection"/>
 <use   name="rootcore"/>
