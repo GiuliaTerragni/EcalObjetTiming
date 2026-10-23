@@ -71,4 +71,3 @@ process.producer_step = cms.Path(process.slimmedPhotons*process.slimmedElectrons
 process.endjob_step = cms.EndPath(process.endOfProcess)
 process.MiniAODoutput_step = cms.EndPath(process.MINIAODoutput)
 process.schedule = cms.Schedule(process.producer_step,process.endjob_step,process.MiniAODoutput_step)
-
