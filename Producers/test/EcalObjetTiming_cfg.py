@@ -8,11 +8,6 @@ options.register('outputFile',
                   VarParsing.VarParsing.multiplicity.singleton,
                   VarParsing.VarParsing.varType.string,
                   "Output file")
-options.register('ntupleFile',
-                  'ecalTiming_ntuple.root',
-                  VarParsing.VarParsing.multiplicity.singleton,
-                  VarParsing.VarParsing.varType.string,
-                  "Flat ntuple output file (electronTree/photonTree)")
 options.parseArguments()
 print(options)
 
@@ -73,22 +68,7 @@ process.slimmedElectrons = cms.EDProducer("EcalTimingPatElectronProducer",
     ebRecHits = cms.InputTag("reducedEgamma","reducedEBRecHits","RECO"),
     eeRecHits = cms.InputTag("reducedEgamma","reducedEERecHits","RECO"),
 )
-process.TFileService = cms.Service("TFileService",
-    fileName = cms.string(options.ntupleFile)
-)
-
-process.electronTree = cms.EDAnalyzer("EcalTimingPatElectronTreeDumper",
-    src = cms.InputTag("slimmedElectrons","","NEWTIME"),
-    treeName = cms.string("electronTree"),
-)
-process.photonTree = cms.EDAnalyzer("EcalTimingPatPhotonTreeDumper",
-    src = cms.InputTag("slimmedPhotons","","NEWTIME"),
-    treeName = cms.string("photonTree"),
-)
-
 process.producer_step = cms.Path(process.slimmedPhotons*process.slimmedElectrons)
-process.ntuple_step = cms.EndPath(process.electronTree+process.photonTree)
 process.endjob_step = cms.EndPath(process.endOfProcess)
 process.MiniAODoutput_step = cms.EndPath(process.MINIAODoutput)
-process.schedule = cms.Schedule(process.producer_step,process.ntuple_step,process.endjob_step,process.MiniAODoutput_step)
-
+process.schedule = cms.Schedule(process.producer_step,process.endjob_step,process.MiniAODoutput_step)
