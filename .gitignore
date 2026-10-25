@@ -2,3 +2,5 @@ Producers/doc/
 Producers/test/*.root
 Producers/test/log.txt
 Producers/test/*.txt
+**/__pycache__/
+Producers/crab/crab_*/
